@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Memory Match</title>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: url('https://www.transparenttextures.com/patterns/stardust.png'), #0a0a23;
+            margin: 0;
+            padding: 20px;
+            color: #fff;
+        }
+
+        .container {
+            text-align: center;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+
+        h1 {
+            color: #ffd700;
+            text-shadow: 0 0 10px #ffd700;
+        }
+
+        #status {
+            font-size: 18px;
+            color: #00ffcc;
+            margin-bottom: 10px;
+        }
+
+        #timer {
+            font-size: 16px;
+            color: #ff4d4d;
+            margin-bottom: 20px;
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(4, 80px);
+            gap: 10px;
+            margin: 0 auto;
+        }
+
+        .card {
+            width: 80px;
+            height: 80px;
+            background: #1c2526;
+            border: 2px solid #00ffcc;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            cursor: pointer;
+            transform-style: preserve-3d;
+            transition: transform 0.5s, box-shadow 0.3s;
+        }
+
+        .card.flipped {
+            transform: rotateY(180deg);
+            background: #00ffcc;
+            color: #1c2526;
+            box-shadow: 0 0 15px #00ffcc;
+        }
+
+        .card.matched {
+            background: #ffd700;
+            border-color: #ffd700;
+            box-shadow: 0 0 15px #ffd700;
+            cursor: default;
+        }
+
+        #restart {
+            padding: 10px 20px;
+            font-size: 16px;
+            background: linear-gradient(45deg, #ff4d4d, #00ffcc);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        #restart:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 10px #fff;
+        }
+
+        @media (max-width: 400px) {
+            #board {
+                grid-template-columns: repeat(4, 60px);
+            }
+            .card {
+                width: 60px;
+                height: 60px;
+                font-size: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Space Memory Match</h1>
+        <div id="status">Matches: 0/8</div>
+        <div id="timer">Time: 60s</div>
+        <div id="board"></div>
+        <button id="restart" onclick="startGame()">New Game</button>
+    </div>
+    <audio id="flipSound" src="https://www.soundjay.com/buttons/button-09.mp3"></audio>
+    <audio id="matchSound" src="https://www.soundjay.com/misc/sounds/magic-chime-01.mp3"></audio>
+    <script>
+        let cards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let timeLeft = 60;
+        let timerInterval;
+
+        const emojis = ['🌌', '🌌', '🚀', '🚀', '🪐', '🪐', '⭐', '⭐', '🌑', '🌑', '🛸', '🛸', '☄️', '☄️', '🌠', '🌠'];
+
+        function startGame() {
+            cards = emojis.sort(() => Math.random() - 0.5);
+            matchedPairs = 0;
+            timeLeft = 120;
+            flippedCards = [];
+            document.getElementById('status').textContent = `Matches: ${matchedPairs}/8`;
+            document.getElementById('timer').textContent = `Time: ${timeLeft}s`;
+            clearInterval(timerInterval);
+            timerInterval = setInterval(updateTimer, 1000);
+
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+            cards.forEach((emoji, index) => {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.dataset.value = emoji;
+                card.onclick = () => flipCard(index);
+                board.appendChild(card);
+            });
+        }
+
+        function flipCard(index) {
+            if (flippedCards.length < 2 && !cards[index].flipped && !cards[index].matched) {
+                const cardElement = document.getElementsByClassName('card')[index];
+                cardElement.textContent = cards[index];
+                cardElement.classList.add('flipped');
+                cards[index].flipped = true;
+                flippedCards.push(index);
+                playSound('flipSound');
+
+                if (flippedCards.length === 2) {
+                    setTimeout(checkMatch, 1000);
+                }
+            }
+        }
+
+        function checkMatch() {
+            const [index1, index2] = flippedCards;
+            const card1 = document.getElementsByClassName('card')[index1];
+            const card2 = document.getElementsByClassName('card')[index2];
+
+            if (cards[index1] === cards[index2]) {
+                card1.classList.add('matched');
+                card2.classList.add('matched');
+                cards[index1].matched = true;
+                cards[index2].matched = true;
+                matchedPairs++;
+                playSound('matchSound');
+                document.getElementById('status').textContent = `Matches: ${matchedPairs}/8`;
+                if (matchedPairs === 8) {
+                    clearInterval(timerInterval);
+                    document.getElementById('status').textContent = `You Win! Time Left: ${timeLeft}s`;
+                }
+            } else {
+                card1.textContent = '';
+                card2.textContent = '';
+                card1.classList.remove('flipped');
+                card2.classList.remove('flipped');
+                cards[index1].flipped = false;
+                cards[index2].flipped = false;
+            }
+            flippedCards = [];
+        }
+
+        function updateTimer() {
+            timeLeft--;
+            document.getElementById('timer').textContent = `Time: ${timeLeft}s`;
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                document.getElementById('status').textContent = 'Game Over!';
+                document.querySelectorAll('.card').forEach(card => card.onclick = null);
+            }
+        }
+
+        function playSound(id) {
+            const sound = document.getElementById(id);
+            sound.currentTime = 0;
+            sound.play().catch(e => console.log('Sound play error:', e));
+        }
+
+        const link = document.createElement('link');
+        link.href = 'https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap';
+        link.rel = 'stylesheet';
+        document.head.appendChild(link);
+
+        startGame();
+    </script>
+</body>
+</html>
